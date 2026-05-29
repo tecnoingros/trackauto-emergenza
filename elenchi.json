@@ -1,5 +1,5 @@
 {
-  "aggiornato": "29/05/2026 16:50",
+  "aggiornato": "29/05/2026 16:55",
   "dipendenti": [
     {
       "matricola": "00072",
@@ -40,10 +40,6 @@
     {
       "matricola": "00164",
       "nome": "Alberto Trevisan"
-    },
-    {
-      "matricola": "00165",
-      "nome": "Panco Pinco"
     }
   ],
   "veicoli": [
