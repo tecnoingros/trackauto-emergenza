@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Track Auto — Registrazione di emergenza</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0; padding: 16px; background: #0f172a; color: #f1f5f9;
+    max-width: 480px; margin: 0 auto;
+  }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  .sub { color: #94a3b8; font-size: 0.85rem; margin-bottom: 20px; }
+  label { display: block; font-weight: 600; margin: 16px 0 6px; font-size: 0.95rem; }
+  select, input {
+    width: 100%; padding: 14px; font-size: 1rem; border-radius: 10px;
+    border: 1px solid #334155; background: #1e293b; color: #f1f5f9;
+  }
+  input[type=text] { margin-top: 8px; }
+  .azione-group { display: flex; gap: 10px; margin-top: 6px; }
+  .azione-btn {
+    flex: 1; padding: 16px; text-align: center; border-radius: 10px;
+    border: 2px solid #334155; background: #1e293b; font-weight: 700;
+    font-size: 1.05rem; cursor: pointer; user-select: none;
+  }
+  .azione-btn.sel-presa { border-color: #10b981; background: #064e3b; color: #fff; }
+  .azione-btn.sel-resa { border-color: #f59e0b; background: #78350f; color: #fff; }
+  canvas {
+    width: 100%; height: 180px; background: #fff; border-radius: 10px;
+    border: 2px solid #334155; touch-action: none; display: block; margin-top: 6px;
+  }
+  .firma-row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+  .clear-btn {
+    background: none; border: 1px solid #475569; color: #94a3b8;
+    padding: 8px 16px; border-radius: 8px; font-size: 0.85rem; width: auto;
+  }
+  .send-btn {
+    width: 100%; padding: 18px; font-size: 1.15rem; font-weight: 700;
+    border: none; border-radius: 12px; background: #3b82f6; color: #fff;
+    margin-top: 28px; cursor: pointer;
+  }
+  .send-btn:disabled { background: #475569; }
+  .note {
+    background: #1e293b; border-left: 3px solid #f59e0b; padding: 12px;
+    border-radius: 6px; font-size: 0.82rem; color: #cbd5e1; margin-top: 24px; line-height: 1.5;
+  }
+  .err { color: #f87171; font-size: 0.85rem; margin-top: 6px; min-height: 1em; }
+  .info-elenchi { color: #64748b; font-size: 0.75rem; margin-top: 4px; }
+  .loading { color: #94a3b8; font-size: 0.9rem; text-align: center; padding: 40px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <h1>🚗 Track Auto</h1>
+  <div class="sub">Registrazione di emergenza (usare solo se il sistema in sede è fuori servizio)</div>
+
+  <div id="loading" class="loading">Caricamento elenchi…</div>
+
+  <div id="form-wrap" class="hidden">
+
+    <label for="dip">Dipendente</label>
+    <select id="dip" onchange="onChangeDip()"></select>
+    <input type="text" id="dip-altro" class="hidden" placeholder="Nome e cognome">
+
+    <label for="targa">Veicolo (targa)</label>
+    <select id="targa" onchange="onChangeTarga()"></select>
+    <input type="text" id="targa-altro" class="hidden" placeholder="Targa">
+
+    <label>Azione</label>
+    <div class="azione-group">
+      <div class="azione-btn" id="btn-presa" onclick="setAzione('PRESA')">PRESA</div>
+      <div class="azione-btn" id="btn-resa" onclick="setAzione('RESA')">RESA</div>
+    </div>
+
+    <label>Firma</label>
+    <canvas id="firma"></canvas>
+    <div class="firma-row">
+      <span style="color:#94a3b8; font-size:0.8rem;">Firma col dito qui sopra</span>
+      <button class="clear-btn" onclick="clearFirma()">Cancella</button>
+    </div>
+
+    <div class="err" id="err"></div>
+
+    <button class="send-btn" id="send" onclick="invia()">Genera e invia registrazione</button>
+
+    <div class="info-elenchi" id="info-elenchi"></div>
+
+    <div class="note">
+      <strong>Come funziona:</strong> dopo aver premuto il pulsante si aprirà la tua app di posta
+      con una mail già pronta. <strong>Invia la mail senza modificarla.</strong>
+      Il sistema la importerà automaticamente quando tornerà operativo.
+      Non cancellare il testo della mail, contiene la tua firma.
+    </div>
+  </div>
+
+<script>
+  var azione = "";
+  var ELENCHI = null;
+
+  // ---- Caricamento elenchi.json ----
+  function caricaElenchi() {
+    // Cache-buster per evitare che il browser usi una versione vecchia
+    var url = "elenchi.json?t=" + Date.now();
+    fetch(url)
+      .then(function(r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function(data) {
+        ELENCHI = data;
+        popolaForm();
+      })
+      .catch(function(err) {
+        // Se non riesce a caricare elenchi.json, mostra comunque il form coi campi liberi
+        ELENCHI = { dipendenti: [], veicoli: [], aggiornato: "" };
+        popolaForm();
+        document.getElementById('info-elenchi').textContent =
+          "Avviso: elenchi non caricati. Usa i campi 'Altro' per inserire i dati a mano.";
+      });
+  }
+
+  function popolaForm() {
+    var dipSel = document.getElementById('dip');
+    dipSel.innerHTML = '<option value="">— Seleziona —</option>';
+    (ELENCHI.dipendenti || []).forEach(function(d) {
+      var opt = document.createElement('option');
+      opt.value = d.matricola + "|" + d.nome;
+      opt.textContent = d.nome;
+      dipSel.appendChild(opt);
+    });
+    var optAltroD = document.createElement('option');
+    optAltroD.value = "ALTRO";
+    optAltroD.textContent = "Altro (scrivi nome)";
+    dipSel.appendChild(optAltroD);
+
+    var targaSel = document.getElementById('targa');
+    targaSel.innerHTML = '<option value="">— Seleziona —</option>';
+    (ELENCHI.veicoli || []).forEach(function(v) {
+      var opt = document.createElement('option');
+      opt.value = v.targa;
+      opt.textContent = v.targa;
+      targaSel.appendChild(opt);
+    });
+    var optAltroT = document.createElement('option');
+    optAltroT.value = "ALTRO";
+    optAltroT.textContent = "Altra targa (scrivi targa)";
+    targaSel.appendChild(optAltroT);
+
+    if (ELENCHI.aggiornato) {
+      document.getElementById('info-elenchi').textContent =
+        "Elenchi aggiornati al " + ELENCHI.aggiornato;
+    }
+
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('form-wrap').classList.remove('hidden');
+    setTimeout(resizeCanvas, 50);
+  }
+
+  function onChangeDip() {
+    var v = document.getElementById('dip').value;
+    var altro = document.getElementById('dip-altro');
+    if (v === "ALTRO") {
+      altro.classList.remove('hidden');
+      altro.focus();
+    } else {
+      altro.classList.add('hidden');
+      altro.value = "";
+    }
+  }
+  function onChangeTarga() {
+    var v = document.getElementById('targa').value;
+    var altro = document.getElementById('targa-altro');
+    if (v === "ALTRO") {
+      altro.classList.remove('hidden');
+      altro.focus();
+    } else {
+      altro.classList.add('hidden');
+      altro.value = "";
+    }
+  }
+
+  function setAzione(a) {
+    azione = a;
+    document.getElementById('btn-presa').className = 'azione-btn' + (a === 'PRESA' ? ' sel-presa' : '');
+    document.getElementById('btn-resa').className = 'azione-btn' + (a === 'RESA' ? ' sel-resa' : '');
+  }
+
+  // ---- Canvas firma ----
+  var canvas, ctx;
+  var disegnando = false, haFirma = false;
+
+  function initCanvas() {
+    canvas = document.getElementById('firma');
+    ctx = canvas.getContext('2d');
+    canvas.addEventListener('touchstart', start);
+    canvas.addEventListener('touchmove', move);
+    canvas.addEventListener('touchend', end);
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    canvas.addEventListener('mouseup', end);
+  }
+
+  function resizeCanvas() {
+    var ratio = window.devicePixelRatio || 1;
+    var rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * ratio;
+    canvas.height = rect.height * ratio;
+    ctx.scale(ratio, ratio);
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#000';
+  }
+
+  function getPos(e) {
+    var rect = canvas.getBoundingClientRect();
+    var t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+  }
+  function start(e) { disegnando = true; haFirma = true; var p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); }
+  function move(e) { if (!disegnando) return; var p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); }
+  function end(e) { disegnando = false; e.preventDefault(); }
+
+  function clearFirma() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    haFirma = false;
+  }
+
+  // ---- Invio ----
+  function invia() {
+    var err = document.getElementById('err');
+    err.textContent = "";
+    var dipVal = document.getElementById('dip').value;
+    var targaVal = document.getElementById('targa').value;
+    var matricola = "";
+    var nome = "";
+    var targa = "";
+
+    if (!dipVal) { err.textContent = "Seleziona il dipendente."; return; }
+    if (dipVal === "ALTRO") {
+      nome = document.getElementById('dip-altro').value.trim();
+      if (!nome) { err.textContent = "Scrivi nome e cognome."; return; }
+      matricola = "ALTRO";
+    } else {
+      var parti = dipVal.split('|');
+      matricola = parti[0];
+      nome = parti[1];
+    }
+
+    if (!targaVal) { err.textContent = "Seleziona il veicolo."; return; }
+    if (targaVal === "ALTRO") {
+      targa = document.getElementById('targa-altro').value.trim().toUpperCase();
+      if (!targa) { err.textContent = "Scrivi la targa."; return; }
+    } else {
+      targa = targaVal;
+    }
+
+    if (!azione) { err.textContent = "Seleziona PRESA o RESA."; return; }
+    if (!haFirma) { err.textContent = "Manca la firma."; return; }
+
+    var now = new Date();
+    var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+    var data = pad(now.getDate()) + '/' + pad(now.getMonth() + 1) + '/' + now.getFullYear();
+    var ora = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+    var idUnivoco = 'EMG-' + now.getTime() + '-' + Math.floor(Math.random() * 10000);
+
+    var firmaPng = canvas.toDataURL('image/png');
+
+    var corpo =
+      "Registrazione di emergenza Track Auto.\n" +
+      "NON modificare questo messaggio, verra' importato automaticamente.\n\n" +
+      "===TRACKAUTO_INIZIO===\n" +
+      "id=" + idUnivoco + "\n" +
+      "matricola=" + matricola + "\n" +
+      "nome=" + nome + "\n" +
+      "targa=" + targa + "\n" +
+      "azione=" + azione + "\n" +
+      "data=" + data + "\n" +
+      "ora=" + ora + "\n" +
+      "firma=" + firmaPng + "\n" +
+      "===TRACKAUTO_FINE===\n";
+
+    var oggetto = "[TRACK AUTO EMERGENZA] " + azione + " " + targa + " - " + nome;
+    var mailto = "mailto:noreply@tecnoingros.com" +
+      "?subject=" + encodeURIComponent(oggetto) +
+      "&body=" + encodeURIComponent(corpo);
+
+    window.location.href = mailto;
+  }
+
+  // Avvio
+  initCanvas();
+  caricaElenchi();
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "aggiornato": "29/05/2026",
+  "dipendenti": [
+    { "matricola": "00072", "nome": "Giovanni De Poli" },
+    { "matricola": "00085", "nome": "Mattia Piana" },
+    { "matricola": "00161", "nome": "Matteo Bosello" },
+    { "matricola": "00149", "nome": "Giovanni Gerarduzzi" },
+    { "matricola": "00137", "nome": "Alex Rossetto" },
+    { "matricola": "00024", "nome": "Denny Belia" },
+    { "matricola": "00148", "nome": "Alessandro Baraldo" },
+    { "matricola": "00013", "nome": "Alberto Diotto" },
+    { "matricola": "00089", "nome": "Sebastiano Coppo" },
+    { "matricola": "00164", "nome": "Alberto Trevisan" }
+  ],
+  "veicoli": [
+    { "targa": "GH297DY" },
+    { "targa": "GC482GT" },
+    { "targa": "FL026KZ" },
+    { "targa": "GB288EJ" },
+    { "targa": "GB867EK" },
+    { "targa": "FZ059BR" }
+  ]
+}
