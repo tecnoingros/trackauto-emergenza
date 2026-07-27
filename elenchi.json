@@ -1,6 +1,47 @@
 {
-  "aggiornato": "27/07/2026 22:02",
-  "dipendenti": [],
+  "aggiornato": "27/07/2026 22:07",
+  "dipendenti": [
+    {
+      "matricola": "00072",
+      "nome": "Giovanni De Poli"
+    },
+    {
+      "matricola": "00085",
+      "nome": "Mattia Piana"
+    },
+    {
+      "matricola": "00161",
+      "nome": "Matteo Bosello"
+    },
+    {
+      "matricola": "00149",
+      "nome": "Giovanni Gerarduzzi"
+    },
+    {
+      "matricola": "00137",
+      "nome": "Alex Rossetto"
+    },
+    {
+      "matricola": "00024",
+      "nome": "Denny Belia"
+    },
+    {
+      "matricola": "00148",
+      "nome": "Alessandro Baraldo"
+    },
+    {
+      "matricola": "00013",
+      "nome": "Alberto Diotto"
+    },
+    {
+      "matricola": "00089",
+      "nome": "Sebastiano Coppo"
+    },
+    {
+      "matricola": "00164",
+      "nome": "Alberto Trevisan"
+    }
+  ],
   "veicoli": [
     {
       "targa": "GH297DY"
